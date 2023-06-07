@@ -1,0 +1,116 @@
+diff --git a/c/Makefile b/c/Makefile
+index 136e80afb..f2c2bd88a 100644
+--- a/c/Makefile
++++ b/c/Makefile
+@@ -6,12 +6,14 @@
+ #
+ # SPDX-License-Identifier: Apache-2.0
+ 
++# VAST-PATCH
++
+ LEVEL := ./
+ 
+ # Don't try to build any sources on this level
+ SKIP_LEVEL := 1
+ 
+ # This directory does not contain tasks
+-IGNORE_DIRS := ./properties/ ./Juliet_Test/
++IGNORE_DIRS := ./properties/ ./Juliet_Test/ ./stats/
+ 
+ include $(LEVEL)/Makefile.config
+diff --git a/c/Makefile.config b/c/Makefile.config
+index d17f076b5..93b81d0f3 100644
+--- a/c/Makefile.config
++++ b/c/Makefile.config
+@@ -61,6 +61,12 @@ BUILD_DIR := bin
+ ################################################################################
+ EMIT_LLVM ?= 0
+ 
++################################################################################
++# 0 - Emit native object files
++# 1 - Emit MLIR High Level dialect (compiler must be vast-front)
++################################################################################
++EMIT_HL_MLIR ?= 0
++
+ ################################################################################
+ # Warning flags to be passed to clang and gcc (i.e. flags are supported by both
+ # compilers).
+@@ -69,7 +75,6 @@ EMIT_LLVM ?= 0
+ ################################################################################
+ DEFAULT_COMMON_WARNINGS := \
+ 	-Wall \
+-	-Werror \
+ 	-Wno-unused-label \
+ 	-Wno-unused-function \
+ 	-Wno-unused-variable \
+@@ -98,6 +103,11 @@ DEFAULT_CLANG_WARNINGS := \
+ 	-Wno-constant-conversion \
+ 	-Wno-builtin-requires-header # (cf. #225) \
+ 
++################################################################################
++# Warning flags that will only be passed to vast
++################################################################################
++DEFAULT_VAST_WARNINGS :=
++
+ 
+ ################################################################################
+ # Set default behaviour for suppressing compiler warnings
+diff --git a/c/Makefile.rules b/c/Makefile.rules
+index 1a870a6ba..74601f37c 100644
+--- a/c/Makefile.rules
++++ b/c/Makefile.rules
+@@ -106,9 +106,24 @@ clean::
+ 
+ # Detect Compiler
+ # FIXME: Not sure $(GREP) accepts these flags on OSX
+-CC_COMPILER_OUTPUT :=$(shell $(CC) -E $(ROOT_DIR)/Makefile-detect-compiler.c -o -)
+-CC_IS_GCC:=$(shell echo '$(CC_COMPILER_OUTPUT)' | $(GREP) -c SVCOMP_C_COMPILER_IS_GCC)
+-CC_IS_CLANG:=$(shell echo '$(CC_COMPILER_OUTPUT)' | $(GREP) -c SVCOMP_C_COMPILER_IS_CLANG)
++CC_IS_VAST := 0
++CC_IS_GCC := 0
++CC_IS_CLANG := 0
++ifeq ($(shell basename $(CC)), vast-front)
++	CC_IS_VAST := 1
++else
++	CC_COMPILER_OUTPUT :=$(shell $(CC) -E $(ROOT_DIR)/Makefile-detect-compiler.c -o -)
++	CC_IS_GCC:=$(shell echo '$(CC_COMPILER_OUTPUT)' | $(GREP) -c SVCOMP_C_COMPILER_IS_GCC)
++	CC_IS_CLANG:=$(shell echo '$(CC_COMPILER_OUTPUT)' | $(GREP) -c SVCOMP_C_COMPILER_IS_CLANG)
++endif
++
++ifeq ($(EMIT_HL_MLIR),1)
++    ifneq ($(CC_IS_VAST),1)
++        $(error To use EMIT_HL_MLIR you must use vast-front)
++    endif
++    CC.Flags += -vast-emit-high-level -fno-crash-diagnostics -fcrash-diagnostics=off
++endif
++
+ 
+ ################################################################################
+ # Begin ifndef SKIP_LEVEL
+@@ -123,6 +138,8 @@ ifeq ($(SUPPRESS_WARNINGS),0)
+     CC.Warnings += $(DEFAULT_GCC_WARNINGS) $(GCC_WARNINGS)
+   else ifeq ($(CC_IS_CLANG),1)
+     CC.Warnings += $(DEFAULT_CLANG_WARNINGS) $(CLANG_WARNINGS)
++  else ifeq ($(CC_IS_VAST),1)
++    CC.Warnings += $(DEFAULT_CLANG_WARNINGS) $(CLANG_WARNINGS) $(DEFAULT_VAST_WARNINGS)
+   else
+     $(error Compiler "$(CC)" was not identified as gcc or clang)
+   endif
+@@ -247,14 +264,17 @@ debug_vars:
+ 	@echo "C_SRCS := $(C_SRCS)"
+ 	@echo "I_SRCS := $(I_SRCS)"
+ 	@echo "C_I_COMMON_SRCS := $(C_I_COMMON_SRCS)"
++	@echo "CC:= $(CC)"
+ 	@echo "CC.Flags := $(CC.Flags)"
+ 	@echo "CC.Warnings := $(CC.Warnings)"
+ 	@echo "CC_IS_CLANG := $(CC_IS_CLANG)"
+ 	@echo "CC_IS_GCC := $(CC_IS_GCC)"
++	@echo "CC_IS_VAST := $(CC_IS_VAST)"
+ 	@echo "CURRENT_DIR := $(CURRENT_DIR)"
+ 	@echo "DEPTH := $(DEPTH)"
+ 	@echo "DIRS := $(DIRS)"
+ 	@echo "EMIT_LLVM := $(EMIT_LLVM)"
++	@echo "EMIT_HL_MLIR := $(EMIT_HL_MLIR)"
+ 	@echo "IGNORE_SRCS := $(IGNORE_SRCS)"
+ 	@echo "LEVEL := $(LEVEL)"
+ 	@echo "LOCAL_BUILD_DIR := $(LOCAL_BUILD_DIR)"
