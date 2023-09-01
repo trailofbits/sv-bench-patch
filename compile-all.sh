@@ -8,7 +8,7 @@ make CC=vast-front CC.Arch=64 EMIT_MLIR=hl REPORT_CC_FILE=1 -j $(nproc --all) 2>
 cd ${STAT_FOLDER}
 mkdir -p data
 cd data
-csplit -z --digits=3 ../${OUT_FILE} /Entering/ {*}
+csplit -z --digits=3 ../${OUT_FILE} /Entering/ {*} 1>/dev/null
 for x in xx*; do
     head -n 1 $x | \
     sed -n -e "s;.*'.*\(sv-benchmarks/c/.*\)';\1;p" && echo -n $(cat $x | grep "OK" | wc -l) \
