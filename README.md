@@ -1,20 +1,22 @@
 # SV-Comp C Benchmarks helper for MLIR generating tools
 
-This a simple patch and runner for SV-Comp benchmarks that helps to compile the benchmarks with [VAST](https://github.com/trailofbits/vast)) and probably other tools that generate mlir.
+This a simple patch and runner for SV-Comp benchmarks that helps to compile the benchmarks with [VAST](https://github.com/trailofbits/vast) and probably other tools that generate mlir.
 The main purpose is to be used as a test of how many files can be succesfully compiled/translated to a dialect.
 
 ## Usage
 To apply the patch you can run the apply script with the path to the root of the sv-benchmarks repository:
 ```./apply <path-to-sv-benchmarks-folder>```
 Afterwards you can use several options (with defaults set-up for [VAST](https://github.com/trailofbits/vast)) to run the sv-benchmarks makefile with your compiler:
-```CC=<your tool>
+```
+CC=<your tool>
 MLIR_COMPILER=<base-name of your tool>
 MLIR_OPTION=<what CLI-option your tool uses to set the otuput mlir
 EMIT_MLIR=<value for the MLIR option>
 REPORT_CC_FILE=1
 ```
 e.g.:
-```make CC=/home/user/src/vast/build/bin/vast-front \
+```
+make CC=/home/user/src/vast/build/bin/vast-front \
 CC.Arch=64 \
 MLIR_COMPILER=vast-front \
 MLIR_OPTION=-vast-emit-mlir \
