@@ -23,5 +23,5 @@ else
 fi
 cd "$SV_DIR"
 
-git apply --check "$PATCHFILE" || echo "SV-Comp makefile already patched for vast!"
+git apply --check "$PATCHFILE" || { echo "SV-Comp makefile already modified! Aborting. Maybe the patch is already applied?"; exit; }
 git apply "$PATCHFILE" && echo "Succesfully patched the makefile for use with vast-front"
