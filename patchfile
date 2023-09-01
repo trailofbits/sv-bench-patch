@@ -1,3 +1,12 @@
+diff --git a/c/.gitignore b/c/.gitignore
+index ecbf95f1a..59de4bfc1 100644
+--- a/c/.gitignore
++++ b/c/.gitignore
+@@ -7,3 +7,4 @@
+ 
+ # Build directory for Makefile build system
+ bin/
++stats/
 diff --git a/c/Makefile b/c/Makefile
 index 136e80afb..f2c2bd88a 100644
 --- a/c/Makefile
@@ -19,23 +28,33 @@ index 136e80afb..f2c2bd88a 100644
  
  include $(LEVEL)/Makefile.config
 diff --git a/c/Makefile.config b/c/Makefile.config
-index d17f076b5..93b81d0f3 100644
+index d17f076b5..39e89757b 100644
 --- a/c/Makefile.config
 +++ b/c/Makefile.config
-@@ -61,6 +61,12 @@ BUILD_DIR := bin
+@@ -61,6 +61,22 @@ BUILD_DIR := bin
  ################################################################################
  EMIT_LLVM ?= 0
  
 +################################################################################
-+# 0 - Emit native object files
-+# 1 - Emit MLIR High Level dialect (compiler must be vast-front)
++# NO - Emit native object files
++# other - Emit selected dialect
 +################################################################################
-+EMIT_HL_MLIR ?= 0
++EMIT_MLIR ?= NO
++
++################################################################################
++# vast-front - default
++################################################################################
++MLIR_COMPILER ?= vast-front
++
++################################################################################
++# vast-emit-mlir - default
++################################################################################
++MLIR_OPTION ?= -vast-emit-mlir
 +
  ################################################################################
  # Warning flags to be passed to clang and gcc (i.e. flags are supported by both
  # compilers).
-@@ -69,7 +75,6 @@ EMIT_LLVM ?= 0
+@@ -69,7 +85,6 @@ EMIT_LLVM ?= 0
  ################################################################################
  DEFAULT_COMMON_WARNINGS := \
  	-Wall \
@@ -43,7 +62,7 @@ index d17f076b5..93b81d0f3 100644
  	-Wno-unused-label \
  	-Wno-unused-function \
  	-Wno-unused-variable \
-@@ -98,6 +103,11 @@ DEFAULT_CLANG_WARNINGS := \
+@@ -98,6 +113,11 @@ DEFAULT_CLANG_WARNINGS := \
  	-Wno-constant-conversion \
  	-Wno-builtin-requires-header # (cf. #225) \
  
@@ -56,47 +75,94 @@ index d17f076b5..93b81d0f3 100644
  ################################################################################
  # Set default behaviour for suppressing compiler warnings
 diff --git a/c/Makefile.rules b/c/Makefile.rules
-index 1a870a6ba..74601f37c 100644
+index 1a870a6ba..4d2ebc6ac 100644
 --- a/c/Makefile.rules
 +++ b/c/Makefile.rules
-@@ -106,9 +106,24 @@ clean::
+@@ -100,15 +100,31 @@ clean::
+ 	$(Verb) for dir in $(DIRS); do \
+ 		($(MAKE) -C $$dir $@ ) || exit 1; \
+ 	done
++	$(Verb) rm -f $(wildcard *.mlir);
+ 	$(Verb) if [ -d $(LOCAL_BUILD_DIR) ]; then \
+ 		$(RM) -r $(LOCAL_BUILD_DIR) ;\
+ 	fi
  
  # Detect Compiler
  # FIXME: Not sure $(GREP) accepts these flags on OSX
 -CC_COMPILER_OUTPUT :=$(shell $(CC) -E $(ROOT_DIR)/Makefile-detect-compiler.c -o -)
 -CC_IS_GCC:=$(shell echo '$(CC_COMPILER_OUTPUT)' | $(GREP) -c SVCOMP_C_COMPILER_IS_GCC)
 -CC_IS_CLANG:=$(shell echo '$(CC_COMPILER_OUTPUT)' | $(GREP) -c SVCOMP_C_COMPILER_IS_CLANG)
-+CC_IS_VAST := 0
++CC_IS_MLIR := 0
 +CC_IS_GCC := 0
 +CC_IS_CLANG := 0
-+ifeq ($(shell basename $(CC)), vast-front)
-+	CC_IS_VAST := 1
++ifeq ($(shell basename $(CC)), $(MLIR_COMPILER))
++	CC_IS_MLIR := 1
 +else
 +	CC_COMPILER_OUTPUT :=$(shell $(CC) -E $(ROOT_DIR)/Makefile-detect-compiler.c -o -)
 +	CC_IS_GCC:=$(shell echo '$(CC_COMPILER_OUTPUT)' | $(GREP) -c SVCOMP_C_COMPILER_IS_GCC)
 +	CC_IS_CLANG:=$(shell echo '$(CC_COMPILER_OUTPUT)' | $(GREP) -c SVCOMP_C_COMPILER_IS_CLANG)
 +endif
 +
-+ifeq ($(EMIT_HL_MLIR),1)
-+    ifneq ($(CC_IS_VAST),1)
-+        $(error To use EMIT_HL_MLIR you must use vast-front)
-+    endif
-+    CC.Flags += -vast-emit-high-level -fno-crash-diagnostics -fcrash-diagnostics=off
++ifneq ($(EMIT_MLIR),NO)
++	ifneq ($(CC_IS_MLIR),1)
++		$(error  To use EMIT_MLIR you must use compatible compiler (set MLIR_COMPILER))
++	endif
++	CC.Flags += $(MLIR_OPTION)=$(EMIT_MLIR)
 +endif
 +
  
  ################################################################################
  # Begin ifndef SKIP_LEVEL
-@@ -123,6 +138,8 @@ ifeq ($(SUPPRESS_WARNINGS),0)
+@@ -123,6 +139,8 @@ ifeq ($(SUPPRESS_WARNINGS),0)
      CC.Warnings += $(DEFAULT_GCC_WARNINGS) $(GCC_WARNINGS)
    else ifeq ($(CC_IS_CLANG),1)
      CC.Warnings += $(DEFAULT_CLANG_WARNINGS) $(CLANG_WARNINGS)
-+  else ifeq ($(CC_IS_VAST),1)
++  else ifeq ($(CC_IS_MLIR),1)
 +    CC.Warnings += $(DEFAULT_CLANG_WARNINGS) $(CLANG_WARNINGS) $(DEFAULT_VAST_WARNINGS)
    else
      $(error Compiler "$(CC)" was not identified as gcc or clang)
    endif
-@@ -247,14 +264,17 @@ debug_vars:
+@@ -201,23 +219,31 @@ build_at_level: $(C_OBJS) $(I_OBJS)
+ # -fsyntax-only is used as Clang doesn't seem to emit a file
+ # to $@
+ $(LOCAL_BUILD_DIR)/%.oc: %.c
+-	@if [ $(REPORT_CC_FILE) -eq 1 ]; then \
+-		echo "$(CC) building $(LOCAL_BUILD_DIR_SUFFIX)/$<" ; \
+-	elif [ $(REPORT_CC_FILE) -eq 2 ]; then \
++	$(Verb) if [ $(REPORT_CC_FILE) -eq 2 ]; then \
+ 		echo -n "."; \
+ 	fi
+ 	$(Verb) $(MKDIR) -p $(LOCAL_BUILD_DIR)
+-	$(Verb) $(CC) $(CC.Flags) -c $< -o $@ -MP -MMD -MF $(LOCAL_BUILD_DIR)/$*.dc
++	$(Verb) if [ $(REPORT_CC_FILE) -eq 1 ]; then \
++		$(CC) $(CC.Flags) -c $< -o $@ -MP -MMD -MF $(LOCAL_BUILD_DIR)/$*.dc && \
++		(echo "$(CC) building $(LOCAL_BUILD_DIR_SUFFIX)/$<" && echo "OK") || \
++		echo "$(CC) building $(LOCAL_BUILD_DIR_SUFFIX)/$<"; \
++	else \
++		$(CC) $(CC.Flags) -c $< -o $@ -MP -MMD -MF $(LOCAL_BUILD_DIR)/$*.dc; \
++	fi
+ 	$(Verb) $(TOUCH) $@
+ 
+ $(LOCAL_BUILD_DIR)/%.oi: %.i
+-	@if [ $(REPORT_CC_FILE) -eq 1 ]; then \
+-		echo "$(CC) building $(LOCAL_BUILD_DIR_SUFFIX)/$<" ; \
+-	elif [ $(REPORT_CC_FILE) -eq 2 ]; then \
++	$(Verb) if [ $(REPORT_CC_FILE) -eq 2 ]; then \
+ 		echo -n "."; \
+ 	fi
+ 	$(Verb) $(MKDIR) -p $(LOCAL_BUILD_DIR)
+-	$(Verb) $(CC) $(CC.Flags) -c $< -o $@ -MP -MMD -MF $(LOCAL_BUILD_DIR)/$*.di
++	$(Verb) if [ $(REPORT_CC_FILE) -eq 1 ]; then \
++		$(CC) $(CC.Flags) -c $< -o $@ -MP -MMD -MF $(LOCAL_BUILD_DIR)/$*.di && \
++		(echo "$(CC) building $(LOCAL_BUILD_DIR_SUFFIX)/$<" && echo "OK") || \
++		echo "$(CC) building $(LOCAL_BUILD_DIR_SUFFIX)/$<"; \
++	else \
++		$(CC) $(CC.Flags) -c $< -o $@ -MP -MMD -MF $(LOCAL_BUILD_DIR)/$*.di; \
++	fi
+ 	$(Verb) $(TOUCH) $@
+ 
+ # All the objects have these additional dependencies
+@@ -247,14 +273,17 @@ debug_vars:
  	@echo "C_SRCS := $(C_SRCS)"
  	@echo "I_SRCS := $(I_SRCS)"
  	@echo "C_I_COMMON_SRCS := $(C_I_COMMON_SRCS)"
@@ -105,7 +171,7 @@ index 1a870a6ba..74601f37c 100644
  	@echo "CC.Warnings := $(CC.Warnings)"
  	@echo "CC_IS_CLANG := $(CC_IS_CLANG)"
  	@echo "CC_IS_GCC := $(CC_IS_GCC)"
-+	@echo "CC_IS_VAST := $(CC_IS_VAST)"
++	@echo "CC_IS_MLIR:= $(CC_IS_MLIR)"
  	@echo "CURRENT_DIR := $(CURRENT_DIR)"
  	@echo "DEPTH := $(DEPTH)"
  	@echo "DIRS := $(DIRS)"
