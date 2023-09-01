@@ -17,3 +17,4 @@ done > ../res.txt
 echo "Total" >> ../res.txt; echo $(echo -n $(grep "OK" ../${OUT_FILE} | wc -l); echo -n "/"; grep -v "make.*directory" ../${OUT_FILE} | grep -v "OK" | wc -l) >> ../res.txt
 cd ..
 rm -rf data
+echo "You can find the stats in ../sv-bnechmarks-c/${STAT_FOLDER}/res.txt"
