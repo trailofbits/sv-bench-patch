@@ -4,7 +4,7 @@ This a simple patch and runner for SV-Comp benchmarks that helps to compile the 
 The main purpose is to be used as a test of how many files can be succesfully compiled/translated to a dialect.
 
 ## Usage
-To apply the patch you can run the apply script with the path to the root of the [sv-benchmarks repository](https://gitlab.com/sosy-lab/benchmarking/sv-benchmarks)(tested commi hash: `3d65c76d8521ef5bc79077a31e7b7e41dd077309`):
+To apply the patch you can run the apply script with the path to the root of the [sv-benchmarks repository](https://gitlab.com/sosy-lab/benchmarking/sv-benchmarks)(tested commit hash: `3d65c76d8521ef5bc79077a31e7b7e41dd077309`):
 ```./apply <path-to-sv-benchmarks-folder>```
 Afterwards you can use several options (with defaults set-up for [VAST](https://github.com/trailofbits/vast)) to run the sv-benchmarks makefile with your compiler:
 ```
