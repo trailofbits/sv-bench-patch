@@ -1,27 +1,56 @@
 #!/bin/sh
 
-PATCHFILE=$(readlink -f patchfile)
-SV_DIR=$1
+apply_patch() {
+    local patchfile=$(readlink -f patchfile)
+    local sv_dir=$1
 
-if [ "$SV_DIR" = "" ]; then
-    echo "sv-comp directory path not supplied! Trying if we share the same parent directory."
-    cd ..
+    if [ -z "$sv_dir" ]; then
+        echo "sv-comp directory path not supplied! Trying if we share the same parent directory."
+        cd ..
 
-    if [ ! -d sv-benchmarks ]; then
-        echo "sv-benchmarks directory not found!"
-        exit 2
+        if [ ! -d sv-benchmarks ]; then
+            echo "sv-benchmarks directory not found!"
+            exit 2
+        else
+            echo "sv-benchmarks directory found, proceeding…"
+            sv_dir=sv-benchmarks/c
+        fi
     else
-        echo "sv-benchmarks directory found, proceeding…"
-        SV_DIR=sv-benchmarks/c
+        if [ ! -d "$sv_dir/c/" ]; then
+            echo "Invalid directory $sv_dir"
+            exit 1
+        fi
+        sv_dir="$sv_dir/c"
     fi
-else
-    if [ ! -d "$SV_DIR/c/" ]; then
-        echo "Invalid directory $SV_DIR"
-        exit 1
-    fi
-    SV_DIR="$SV_DIR/c"
-fi
-cd "$SV_DIR"
 
-git apply --check "$PATCHFILE" || { echo "SV-Comp makefile already modified! Aborting. Maybe the patch is already applied?"; exit; }
-git apply "$PATCHFILE" && echo "Succesfully patched the makefile for use with vast-front"
+    cd "$sv_dir"
+
+    git apply --check "$patchfile" || { echo "SV-COMP makefile already modified! Aborting. Maybe the patch is already applied?"; exit; }
+    git apply "$patchfile" && echo "Successfully patched the makefile for use with vast-front"
+}
+
+show_help() {
+    echo "Usage: $0 [OPTIONS] [SV_DIR]"
+    echo "Apply a patch to the SV-COMP makefile for use with vast-front and other MLIR-enabled compilers."
+    echo "If SV_DIR is not provided, it attempts to use a common parent directory."
+    echo ""
+    echo "Options:"
+    echo "  -h, --help    Display this help message."
+}
+
+# Parse command-line options
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        *)
+            break
+            ;;
+    esac
+    shift
+done
+
+# Apply the patch with the provided or inferred SV_DIR
+apply_patch "$1"
