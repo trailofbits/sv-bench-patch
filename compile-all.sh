@@ -65,7 +65,7 @@ initialize() {
 
     FULL_OUT_DIR=$(readlink -f "${OUTPUT_DIR}")
     RESULTS_FILE="${FULL_OUT_DIR}/results.txt"
-    OUT_FILE="${FULL_OUT_DIR}/$(date +"out-k%H%M%S.txt")"
+    OUT_FILE="${FULL_OUT_DIR}/$(date +"out-%H%M%S.txt")"
 }
 
 build() {
@@ -80,21 +80,26 @@ build() {
 process() {
     log "Processing build artifacts..."
     log "Current working directory: $(pwd)"
-    cd "$FULL_OUTPUT_DIR" || exit 1
+    cd "$FULL_OUT_DIR" || exit 1
     mkdir -p data || exit 1
     cd data || exit 1
 
-    csplit -z --digits=3 "../${OUT_FILE}" "/Entering/" {*} 1>/dev/null || exit 1
+    awk '
+        /.*Entering.*/ {
+        ++part;
+        if (output_file) close(output_file);
+        output_file=sprintf("xx-%03d.txt", part)
+    }
+    ' ../${OUT_FILE}
 
     for x in xx*; do
         local file_path=$(head -n 1 "$x" | sed -n -e "s;.*'.*\(sv-benchmarks/c/.*\)';\1;p")
         local ok_count=$(grep "OK" "$x" | wc -l)
         local other_count=$(grep -v "make\|OK" "$x" | wc -l)
         echo "${file_path} ${ok_count}/${other_count}"
-    done > $RESULTS_FILE || exit 1
+    done > "../$RESULTS_FILE" || exit 1
 
-    echo "Total" >> "../$RESULTS_FILE"
-    echo "$(grep "OK" "../${OUT_FILE}" | wc -l)/$(grep -v "make.*directory\|OK" "../${OUT_FILE}" | wc -l)" >> "../$RESULTS_FILE"
+    echo "Total $(grep "OK" "../${OUT_FILE}" | wc -l)/$(grep -v "make.*directory\|OK" "../${OUT_FILE}" | wc -l)" >> "../$RESULTS_FILE"
 }
 
 cleanup() {
