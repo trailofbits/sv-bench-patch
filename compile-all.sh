@@ -7,6 +7,7 @@ OUT_FILE=""
 RESULTS_FILE=""
 VERBOSE=false
 JOBS=""
+COMPILER="vast-front"
 DIR=$(pwd)
 
 show_help() {
@@ -16,6 +17,7 @@ show_help() {
     echo "  -d, --directory     Specify the SV-Comp benchmarks directory. Default is '../sv-benchmarks/'."
     echo "  -o, --output        Specify the output directory for result files."
     echo "  -j, --jobs          Specify the number of jobs/threads to use for building. Default is the number of available processors."
+    echo "  -c, --compiler      Specify the compiler binary used to build the benchmarks. Default is vast-front."
     echo "  -v, --verbose       Enable verbose output."
 }
 
@@ -40,6 +42,9 @@ parse_options() {
                 ;;
             -v|--verbose)
                 VERBOSE=true
+                ;;
+            -c|--compiler)
+                COMPILER="$2"
                 ;;
             *)
                 echo "Unknown option: $1"
@@ -74,7 +79,7 @@ build() {
     cd "$SV_BENCHMARKS_DIR/c" || exit 1
     # make clean || exit 1
 
-    make CC=vast-front CC.Arch=64 EMIT_MLIR=hl REPORT_CC_FILE=1 -j "${JOBS:-$(nproc --all)}" 2>/dev/null | tee "${OUT_FILE}"
+    make CC=${COMPILER} CC.Arch=64 EMIT_MLIR=hl REPORT_CC_FILE=1 -j "${JOBS:-$(nproc --all)}" 2>/dev/null | tee "${OUT_FILE}"
 }
 
 process() {
