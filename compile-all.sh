@@ -77,7 +77,7 @@ build() {
     log "Building sv-comp benchmarks..."
     log "Current working directory: $(pwd)"
     cd "$SV_BENCHMARKS_DIR/c" || exit 1
-    # make clean || exit 1
+    make clean || exit 1
 
     make CC=${COMPILER} CC.Arch=64 EMIT_MLIR=hl REPORT_CC_FILE=1 -j "${JOBS:-$(nproc --all)}" 2>/dev/null | tee "${OUT_FILE}"
 }
