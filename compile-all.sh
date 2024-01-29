@@ -45,6 +45,7 @@ parse_options() {
                 ;;
             -c|--compiler)
                 COMPILER="$2"
+                shift
                 ;;
             *)
                 echo "Unknown option: $1"
