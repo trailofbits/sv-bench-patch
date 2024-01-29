@@ -90,22 +90,24 @@ process() {
     mkdir -p data || exit 1
     cd data || exit 1
 
+    log "Out file: ${OUT_FILE}"
     awk '
         /.*Entering.*/ {
         ++part;
         if (output_file) close(output_file);
         output_file=sprintf("xx-%03d.txt", part)
     }
-    ' ../${OUT_FILE}
+    {print >output_file}
+    ' ${OUT_FILE}
 
     for x in xx*; do
         local file_path=$(head -n 1 "$x" | sed -n -e "s;.*'.*\(sv-benchmarks/c/.*\)';\1;p")
         local ok_count=$(grep "OK" "$x" | wc -l)
         local other_count=$(grep -v "make\|OK" "$x" | wc -l)
         echo "${file_path} ${ok_count}/${other_count}"
-    done > "../$RESULTS_FILE" || exit 1
+    done > "$RESULTS_FILE" || exit 1
 
-    echo "Total $(grep "OK" "../${OUT_FILE}" | wc -l)/$(grep -v "make.*directory\|OK" "../${OUT_FILE}" | wc -l)" >> "../$RESULTS_FILE"
+    echo "Total $(grep "OK" "${OUT_FILE}" | wc -l)/$(grep -v "make.*directory\|OK" "${OUT_FILE}" | wc -l)" >> "$RESULTS_FILE"
 }
 
 cleanup() {
