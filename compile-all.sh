@@ -8,6 +8,7 @@ RESULTS_FILE=""
 VERBOSE=false
 JOBS=""
 COMPILER="vast-front"
+TARGET_IR="hl"
 DIR=$(pwd)
 
 show_help() {
@@ -47,6 +48,10 @@ parse_options() {
                 COMPILER="$2"
                 shift
                 ;;
+            -t|--target)
+                TARGET_IR="$2"
+                shift
+                ;;
             *)
                 echo "Unknown option: $1"
                 show_help
@@ -80,7 +85,7 @@ build() {
     cd "$SV_BENCHMARKS_DIR/c" || exit 1
     make clean || exit 1
 
-    make CC=${COMPILER} CC.Arch=64 EMIT_MLIR=hl REPORT_CC_FILE=1 -j "${JOBS:-$(nproc --all)}" 2>/dev/null | tee "${OUT_FILE}"
+    make CC=${COMPILER} CC.Arch=64 EMIT_MLIR=${TARGET_IR} REPORT_CC_FILE=1 -j "${JOBS:-$(nproc --all)}" 2>/dev/null | tee "${OUT_FILE}"
 }
 
 process() {
