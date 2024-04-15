@@ -1,7 +1,7 @@
 #!/bin/sh
 
 SV_BENCHMARKS_DIR="../sv-benchmarks/"
-OUTPUT_DIR="stats/$(date +"%y-%m-%d")"
+OUTPUT_DIR="stats/"
 FULL_OUT_DIR=""
 OUT_FILE=""
 RESULTS_FILE=""
