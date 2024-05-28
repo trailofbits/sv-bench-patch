@@ -9,6 +9,7 @@ VERBOSE=false
 JOBS=""
 COMPILER="vast-front"
 TARGET_IR="hl"
+DISABLE_UNSUP=false
 DIR=$(pwd)
 
 show_help() {
@@ -52,6 +53,10 @@ parse_options() {
                 TARGET_IR="$2"
                 shift
                 ;;
+            --disable-unsup)
+                DISABLE_UNSUP=true
+                shift
+                ;;
             *)
                 echo "Unknown option: $1"
                 show_help
@@ -85,7 +90,7 @@ build() {
     cd "$SV_BENCHMARKS_DIR/c" || exit 1
     make clean || exit 1
 
-    make CC=${COMPILER} CC.Arch=64 EMIT_MLIR=${TARGET_IR} REPORT_CC_FILE=1 -j "${JOBS:-$(nproc --all)}" 2>/dev/null | tee "${OUT_FILE}"
+    make CC=${COMPILER} CC.Arch=64 EMIT_MLIR=${TARGET_IR} REPORT_CC_FILE=1 DISABLE_UNSUPPORTED=${DISABLE_UNSUP} -j "${JOBS:-$(nproc --all)}" 2>/dev/null | tee "${OUT_FILE}"
 }
 
 process() {
