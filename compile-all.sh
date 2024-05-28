@@ -112,12 +112,12 @@ process() {
 
     for x in xx*; do
         local file_path=$(head -n 1 "$x" | sed -n -e "s;.*'.*\(sv-benchmarks/c/.*\)';\1;p")
-        local ok_count=$(grep "OK" "$x" | wc -l)
-        local other_count=$(grep -v "make\|OK" "$x" | wc -l)
+        local ok_count=$(grep -c "OK" "$x")
+        local other_count=$(grep -v -c "make\|OK" "$x")
         echo "${file_path} ${ok_count}/${other_count}"
     done > "$RESULTS_FILE" || exit 1
 
-    echo "Total $(grep "OK" "${OUT_FILE}" | wc -l)/$(grep -v "make.*directory\|OK" "${OUT_FILE}" | wc -l)" >> "$RESULTS_FILE"
+    echo "Total $(grep -c "OK" "${OUT_FILE}")/$(grep -v -c "make.*directory\|OK" "${OUT_FILE}")" >> "$RESULTS_FILE"
 }
 
 cleanup() {
