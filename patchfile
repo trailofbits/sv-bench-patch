@@ -28,18 +28,9 @@ index 136e80afb0..f2c2bd88ac 100644
  
  include $(LEVEL)/Makefile.config
 diff --git a/c/Makefile.config b/c/Makefile.config
-index d17f076b5a..5086eca6e2 100644
+index d17f076b5a..39e89757b9 100644
 --- a/c/Makefile.config
 +++ b/c/Makefile.config
-@@ -31,7 +31,7 @@
- # It is important to append so that it is posible to set CC.Flags in a top-level
- # makefile.
- ################################################################################
--CC.Flags += -x c
-+CC.Flags += -x c -fcrash-diagnostics=off
- 
- ################################################################################
- # Set default x86 architecture variant
 @@ -61,6 +61,22 @@ BUILD_DIR := bin
  ################################################################################
  EMIT_LLVM ?= 0
@@ -84,7 +75,7 @@ index d17f076b5a..5086eca6e2 100644
  ################################################################################
  # Set default behaviour for suppressing compiler warnings
 diff --git a/c/Makefile.rules b/c/Makefile.rules
-index 1a870a6ba3..d949c368d5 100644
+index 1a870a6ba3..871e58c07e 100644
 --- a/c/Makefile.rules
 +++ b/c/Makefile.rules
 @@ -106,9 +106,24 @@ clean::
@@ -115,7 +106,7 @@ index 1a870a6ba3..d949c368d5 100644
  
  ################################################################################
  # Begin ifndef SKIP_LEVEL
-@@ -123,18 +138,24 @@ ifeq ($(SUPPRESS_WARNINGS),0)
+@@ -123,12 +138,14 @@ ifeq ($(SUPPRESS_WARNINGS),0)
      CC.Warnings += $(DEFAULT_GCC_WARNINGS) $(GCC_WARNINGS)
    else ifeq ($(CC_IS_CLANG),1)
      CC.Warnings += $(DEFAULT_CLANG_WARNINGS) $(CLANG_WARNINGS)
@@ -131,18 +122,7 @@ index 1a870a6ba3..d949c368d5 100644
  endif
  
  CC.Flags += -std=$(CC.Standard) \
-             -m$(CC.Arch) \
--            $(CC.Warnings)
-+            $(CC.Warnings) \
-+            -fcrash-diagnostics=off
- 
-+ifeq ($(DISABLE_UNSUPPORTED),true)
-+    CC.Flags += -vast-disable-unsupported
-+endif
- 
- # Handle emission of LLVM Bitcode rather than native code
- ifneq ($(EMIT_LLVM),0)
-@@ -145,7 +166,9 @@ ifneq ($(EMIT_LLVM),0)
+@@ -145,7 +162,9 @@ ifneq ($(EMIT_LLVM),0)
    CC.Flags += -emit-llvm
  else
    ifneq ($(SYNTAX_ONLY),0)
@@ -153,7 +133,7 @@ index 1a870a6ba3..d949c368d5 100644
    endif
  endif
  
-@@ -201,23 +224,31 @@ build_at_level: $(C_OBJS) $(I_OBJS)
+@@ -201,23 +220,31 @@ build_at_level: $(C_OBJS) $(I_OBJS)
  # -fsyntax-only is used as Clang doesn't seem to emit a file
  # to $@
  $(LOCAL_BUILD_DIR)/%.oc: %.c
@@ -166,7 +146,7 @@ index 1a870a6ba3..d949c368d5 100644
  	$(Verb) $(MKDIR) -p $(LOCAL_BUILD_DIR)
 -	$(Verb) $(CC) $(CC.Flags) -c $< -o $@ -MP -MMD -MF $(LOCAL_BUILD_DIR)/$*.dc
 +	$(Verb) if [ $(REPORT_CC_FILE) -eq 1 ]; then \
-+		$(CC) $(CC.Flags) -c $< -o /dev/null -MP -MMD -MF $(LOCAL_BUILD_DIR)/$*.dc && \
++		$(CC) $(CC.Flags) -c $< -o $@ -MP -MMD -MF $(LOCAL_BUILD_DIR)/$*.dc && \
 +		(echo "$(CC) building $(LOCAL_BUILD_DIR_SUFFIX)/$<" && echo "OK") || \
 +		echo "$(CC) building $(LOCAL_BUILD_DIR_SUFFIX)/$<"; \
 +	else \
@@ -184,7 +164,7 @@ index 1a870a6ba3..d949c368d5 100644
  	$(Verb) $(MKDIR) -p $(LOCAL_BUILD_DIR)
 -	$(Verb) $(CC) $(CC.Flags) -c $< -o $@ -MP -MMD -MF $(LOCAL_BUILD_DIR)/$*.di
 +	$(Verb) if [ $(REPORT_CC_FILE) -eq 1 ]; then \
-+		$(CC) $(CC.Flags) -c $< -o /dev/null -MP -MMD -MF $(LOCAL_BUILD_DIR)/$*.di && \
++		$(CC) $(CC.Flags) -c $< -o $@ -MP -MMD -MF $(LOCAL_BUILD_DIR)/$*.di && \
 +		(echo "$(CC) building $(LOCAL_BUILD_DIR_SUFFIX)/$<" && echo "OK") || \
 +		echo "$(CC) building $(LOCAL_BUILD_DIR_SUFFIX)/$<"; \
 +	else \
@@ -193,7 +173,7 @@ index 1a870a6ba3..d949c368d5 100644
  	$(Verb) $(TOUCH) $@
  
  # All the objects have these additional dependencies
-@@ -247,14 +278,17 @@ debug_vars:
+@@ -247,14 +274,17 @@ debug_vars:
  	@echo "C_SRCS := $(C_SRCS)"
  	@echo "I_SRCS := $(I_SRCS)"
  	@echo "C_I_COMMON_SRCS := $(C_I_COMMON_SRCS)"
@@ -211,9 +191,3 @@ index 1a870a6ba3..d949c368d5 100644
  	@echo "IGNORE_SRCS := $(IGNORE_SRCS)"
  	@echo "LEVEL := $(LEVEL)"
  	@echo "LOCAL_BUILD_DIR := $(LOCAL_BUILD_DIR)"
-@@ -262,4 +296,5 @@ debug_vars:
- 	@echo "ROOT_DIR := $(ROOT_DIR)"
- 	@echo "SKIP_LEVEL := $(SKIP_LEVEL)"
- 	@echo "SYNTAX_ONLY := $(SYNTAX_ONLY)"
-+	@echo "DISABLE_UNSUPPORTED := $(DISABLE_UNSUPPORTED)"
- 
