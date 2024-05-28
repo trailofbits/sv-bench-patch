@@ -55,7 +55,6 @@ parse_options() {
                 ;;
             --disable-unsup)
                 DISABLE_UNSUP=true
-                shift
                 ;;
             *)
                 echo "Unknown option: $1"
